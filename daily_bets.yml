@@ -1,0 +1,40 @@
+name: Daily Bet Intelligence
+
+on:
+  schedule:
+    - cron: '0 21 * * *'   # 7am AEST (9pm UTC previous day)
+  workflow_dispatch:        # manual trigger anytime
+
+permissions:
+  contents: write
+
+jobs:
+  generate-bets:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install anthropic requests openpyxl python-dateutil
+
+      - name: Run bet engine
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+        run: python scripts/generate_bets.py
+
+      - name: Commit outputs
+        run: |
+          git config user.name "BetEngine Bot"
+          git config user.email "bot@ladder"
+          git add docs/data/
+          git diff --cached --quiet || git commit -m "Daily bets $(date +'%Y-%m-%d')"
+          git push

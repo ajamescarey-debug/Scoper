@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ladder Intelligence — Bet Engine</title>
+<style>
+  :root {
+    --bg:       #0d0d1a;
+    --surface:  #13132a;
+    --card:     #1a1a35;
+    --border:   #2a2a50;
+    --gold:     #ffd700;
+    --gold2:    #c9a227;
+    --take:     #52d452;
+    --take-bg:  #0d3a0d;
+    --monitor:  #ffd166;
+    --monitor-bg: #3a2a0a;
+    --skip:     #ff6b6b;
+    --skip-bg:  #3a0d0d;
+    --text:     #e2e2f0;
+    --muted:    #8888aa;
+    --accent:   #5b5bff;
+    --perfect:  #00e5a0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+  /* Header */
+  .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 20px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+  .logo { font-size: 22px; font-weight: 700; color: var(--gold); letter-spacing: -0.5px; }
+  .logo span { color: var(--text); font-weight: 300; }
+  .header-meta { font-size: 12px; color: var(--muted); text-align: right; line-height: 1.7; }
+
+  /* Stats bar */
+  .stats-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; padding: 20px 24px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; text-align: center; }
+  .stat-val  { font-size: 28px; font-weight: 700; color: var(--gold); line-height: 1; }
+  .stat-lbl  { font-size: 11px; color: var(--muted); margin-top: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .stat-card.take  .stat-val { color: var(--take); }
+  .stat-card.skip  .stat-val { color: var(--skip); }
+  .stat-card.mon   .stat-val { color: var(--monitor); }
+
+  /* Filter tabs */
+  .tabs { display: flex; gap: 8px; padding: 0 24px 16px; flex-wrap: wrap; }
+  .tab { padding: 7px 18px; border-radius: 20px; border: 1px solid var(--border); font-size: 13px; cursor: pointer; background: transparent; color: var(--muted); transition: all 0.15s; }
+  .tab:hover { border-color: var(--gold2); color: var(--text); }
+  .tab.active { background: var(--gold); color: #0d0d1a; border-color: var(--gold); font-weight: 600; }
+
+  /* Bet cards grid */
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px; padding: 0 24px 32px; }
+
+  .bet-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; transition: transform 0.15s, border-color 0.15s; }
+  .bet-card:hover { transform: translateY(-2px); border-color: var(--gold2); }
+  .bet-card.TAKE    { border-left: 4px solid var(--take); }
+  .bet-card.MONITOR { border-left: 4px solid var(--monitor); }
+  .bet-card.SKIP    { border-left: 4px solid var(--skip); opacity: 0.7; }
+
+  .card-header { padding: 14px 16px 10px; display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  .match-name  { font-size: 14px; font-weight: 600; color: var(--text); line-height: 1.4; }
+  .sport-badge { font-size: 10px; padding: 3px 8px; border-radius: 12px; background: var(--surface); color: var(--muted); border: 1px solid var(--border); white-space: nowrap; flex-shrink: 0; }
+
+  .card-bet { padding: 0 16px 12px; }
+  .outcome-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .outcome-name { font-size: 15px; font-weight: 700; color: var(--text); flex: 1; }
+  .odds-badge { font-size: 18px; font-weight: 800; color: var(--gold); }
+  .market-tag  { font-size: 11px; color: var(--muted); padding: 2px 8px; border-radius: 8px; background: var(--surface); }
+
+  .card-metrics { padding: 10px 16px; background: rgba(0,0,0,0.2); display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .metric-item { display: flex; flex-direction: column; align-items: center; min-width: 54px; }
+  .metric-val  { font-size: 14px; font-weight: 700; }
+  .metric-lbl  { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+  /* Confidence bar */
+  .conf-bar-wrap { flex: 1; min-width: 80px; }
+  .conf-bar-track { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; margin-top: 4px; }
+  .conf-bar-fill  { height: 6px; border-radius: 3px; transition: width 0.6s ease; }
+
+  .verdict-badge { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; letter-spacing: 0.05em; }
+  .badge-TAKE    { background: var(--take-bg);    color: var(--take);    border: 1px solid var(--take); }
+  .badge-MONITOR { background: var(--monitor-bg); color: var(--monitor); border: 1px solid var(--monitor); }
+  .badge-SKIP    { background: var(--skip-bg);    color: var(--skip);    border: 1px solid var(--skip); }
+
+  .ladder-fit { font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 8px; }
+  .fit-PERFECT  { background: rgba(0,229,160,0.15); color: var(--perfect); }
+  .fit-GOOD     { background: rgba(82,212,82,0.15);  color: var(--take); }
+  .fit-MARGINAL { background: rgba(255,209,102,0.15);color: var(--monitor); }
+  .fit-POOR     { background: rgba(255,107,107,0.15);color: var(--skip); }
+
+  .card-reasoning { padding: 10px 16px; font-size: 12px; color: var(--muted); line-height: 1.6; border-top: 1px solid var(--border); }
+  .card-flags { padding: 6px 16px 12px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .flag-tag { font-size: 10px; padding: 2px 7px; border-radius: 8px; background: rgba(255,107,107,0.1); color: var(--skip); border: 1px solid rgba(255,107,107,0.2); }
+
+  .card-combo { padding: 6px 16px 12px; font-size: 11px; color: var(--muted); }
+  .card-combo span { color: var(--gold); }
+
+  /* Loading / error states */
+  .loading { text-align: center; padding: 60px; color: var(--muted); font-size: 14px; }
+  .loading-dot { display: inline-block; animation: pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:0.3} 50%{opacity:1} }
+
+  /* Excel download */
+  .dl-bar { background: var(--surface); border-top: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .dl-btn  { padding: 9px 20px; border-radius: 8px; background: var(--gold); color: #0d0d1a; font-weight: 700; font-size: 13px; text-decoration: none; border: none; cursor: pointer; }
+  .dl-btn:hover { background: var(--gold2); }
+  .dl-info { font-size: 12px; color: var(--muted); }
+
+  .empty-state { text-align: center; padding: 60px 24px; color: var(--muted); }
+  .empty-state h3 { color: var(--text); margin-bottom: 8px; }
+
+  @media (max-width: 600px) {
+    .cards { grid-template-columns: 1fr; padding: 0 12px 24px; }
+    .stats-bar { padding: 12px; }
+    .tabs { padding: 0 12px 12px; }
+    .header { padding: 14px 12px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="logo">⚡ Ladder<span>Intelligence</span></div>
+    <div style="font-size:12px;color:var(--muted);margin-top:4px">Powered by Claude Opus · Extended Thinking</div>
+  </div>
+  <div class="header-meta" id="header-meta">Loading...</div>
+</div>
+
+<div class="stats-bar" id="stats-bar">
+  <div class="stat-card"><div class="stat-val" id="s-total">—</div><div class="stat-lbl">Analysed</div></div>
+  <div class="stat-card take"><div class="stat-val" id="s-take">—</div><div class="stat-lbl">Take signals</div></div>
+  <div class="stat-card mon"><div class="stat-val" id="s-mon">—</div><div class="stat-lbl">Monitor</div></div>
+  <div class="stat-card skip"><div class="stat-val" id="s-skip">—</div><div class="stat-lbl">Skip</div></div>
+  <div class="stat-card"><div class="stat-val" id="s-conf">—</div><div class="stat-lbl">Avg confidence</div></div>
+  <div class="stat-card"><div class="stat-val" id="s-perfect">—</div><div class="stat-lbl">Perfect fits</div></div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="filterBets('ALL',this)">All</button>
+  <button class="tab" onclick="filterBets('TAKE',this)">✅ Take</button>
+  <button class="tab" onclick="filterBets('MONITOR',this)">👁 Monitor</button>
+  <button class="tab" onclick="filterBets('SKIP',this)">❌ Skip</button>
+  <button class="tab" onclick="filterBets('PERFECT',this)">⚡ Perfect Fit</button>
+</div>
+
+<div class="cards" id="cards-container">
+  <div class="loading"><span class="loading-dot">⚡</span> Loading today's intelligence...</div>
+</div>
+
+<div class="dl-bar">
+  <a class="dl-btn" id="excel-dl" href="#" download>📥 Download Excel Feed</a>
+  <div class="dl-info" id="dl-info">Full analysis · All markets · Parlay builder · Model log</div>
+</div>
+
+<script>
+let allBets = [];
+let today   = "";
+
+async function loadData() {
+  try {
+    const res  = await fetch('data/bets.json?_=' + Date.now());
+    const data = await res.json();
+    today    = data.generated || "";
+    allBets  = data.bets || [];
+    renderStats(data);
+    renderCards(allBets);
+    updateExcelLink(today);
+    document.getElementById('header-meta').innerHTML =
+      `Generated: <strong>${today}</strong><br>${allBets.length} opportunities · Claude Opus`;
+  } catch(e) {
+    document.getElementById('cards-container').innerHTML =
+      `<div class="empty-state"><h3>No data yet</h3><p>Run the GitHub Actions workflow to generate today's bets.</p></div>`;
+    document.getElementById('header-meta').textContent = 'No data available';
+  }
+}
+
+function renderStats(data) {
+  const bets    = data.bets || [];
+  const takes   = bets.filter(b => b.verdict === 'TAKE');
+  const mons    = bets.filter(b => b.verdict === 'MONITOR');
+  const skips   = bets.filter(b => b.verdict === 'SKIP');
+  const perfect = bets.filter(b => b.ladder_fit === 'PERFECT' && b.verdict === 'TAKE');
+  const avgConf = takes.length
+    ? Math.round(takes.reduce((s,b) => s + (b.confidence||0), 0) / takes.length)
+    : 0;
+
+  document.getElementById('s-total').textContent   = bets.length;
+  document.getElementById('s-take').textContent    = takes.length;
+  document.getElementById('s-mon').textContent     = mons.length;
+  document.getElementById('s-skip').textContent    = skips.length;
+  document.getElementById('s-conf').textContent    = avgConf + '%';
+  document.getElementById('s-perfect').textContent = perfect.length;
+}
+
+function filterBets(type, btn) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  if (type === 'ALL')     renderCards(allBets);
+  else if (type === 'PERFECT') renderCards(allBets.filter(b => b.ladder_fit === 'PERFECT' && b.verdict === 'TAKE'));
+  else renderCards(allBets.filter(b => b.verdict === type));
+}
+
+function confColor(c) {
+  if (c >= 70) return 'var(--take)';
+  if (c >= 55) return 'var(--monitor)';
+  return 'var(--skip)';
+}
+
+function stars(n) {
+  return '★'.repeat(n) + '☆'.repeat(5 - n);
+}
+
+function renderCards(bets) {
+  const container = document.getElementById('cards-container');
+  if (!bets.length) {
+    container.innerHTML = '<div class="empty-state"><h3>No bets match this filter</h3></div>';
+    return;
+  }
+
+  container.innerHTML = bets.map(b => {
+    const verdict   = b.verdict || 'SKIP';
+    const conf      = b.confidence || 0;
+    const edge      = b.edge_rating || 0;
+    const lfit      = b.ladder_fit || 'POOR';
+    const ev        = ((b.expected_value || 0) * 100).toFixed(1);
+    const kelly     = ((b.kelly_fraction || 0) * 100).toFixed(1);
+    const flags     = (b.risk_flags || []).map(f =>
+      `<span class="flag-tag">${f}</span>`).join('');
+    const combo     = b.best_combo_partner
+      ? `<div class="card-combo">🔗 Combine with: <span>${b.best_combo_partner}</span></div>` : '';
+    const mktLabel  = (b.market || '').replace(/_/g, ' ')
+      .split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+
+    return `
+    <div class="bet-card ${verdict}">
+      <div class="card-header">
+        <div class="match-name">${b.match || '—'}</div>
+        <span class="sport-badge">${b.sport || ''}</span>
+      </div>
+      <div class="card-bet">
+        <div class="outcome-row">
+          <div class="outcome-name">${b.outcome || '—'}</div>
+          <div class="odds-badge">${(b.odds || 0).toFixed(2)}</div>
+        </div>
+        <span class="market-tag">${mktLabel}</span>
+      </div>
+      <div class="card-metrics">
+        <div style="display:flex;gap:8px;align-items:center;margin-right:auto;flex-wrap:wrap">
+          <span class="verdict-badge badge-${verdict}">${verdict}</span>
+          <span class="ladder-fit fit-${lfit}">${lfit}</span>
+        </div>
+        <div class="metric-item">
+          <div class="metric-val" style="color:${confColor(conf)}">${conf}%</div>
+          <div class="metric-lbl">Confidence</div>
+        </div>
+        <div class="metric-item">
+          <div class="metric-val" style="color:var(--gold);font-size:12px">${stars(edge)}</div>
+          <div class="metric-lbl">Edge</div>
+        </div>
+        <div class="metric-item">
+          <div class="metric-val" style="color:${parseFloat(ev)>0?'var(--take)':'var(--skip)'}">${ev > 0 ? '+' : ''}${ev}%</div>
+          <div class="metric-lbl">EV</div>
+        </div>
+        <div class="metric-item">
+          <div class="metric-val" style="color:var(--muted)">${kelly}%</div>
+          <div class="metric-lbl">Kelly</div>
+        </div>
+      </div>
+      ${b.reasoning ? `<div class="card-reasoning">${b.reasoning}</div>` : ''}
+      ${flags ? `<div class="card-flags">${flags}</div>` : ''}
+      ${combo}
+    </div>`;
+  }).join('');
+}
+
+function updateExcelLink(date) {
+  const link = document.getElementById('excel-dl');
+  link.href = `data/bets_${date}.xlsx`;
+  document.getElementById('dl-info').textContent =
+    `bets_${date}.xlsx · Full analysis · Parlay builder · Model log`;
+}
+
+loadData();
+</script>
+</body>
+</html>
