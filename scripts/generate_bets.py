@@ -301,7 +301,6 @@ Remember: output ONLY the JSON array, nothing else."""
             max_tokens=16000,
             thinking={
                 "type": "adaptive",
-                "budget_tokens": 6000,
             },
             system=SYSTEM_PROMPT,
             messages=[{"role": "user", "content": user_msg}],
