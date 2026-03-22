@@ -114,6 +114,40 @@ def flatten_fixtures(raw_fixtures: list[dict], sport: str) -> list[dict]:
     return opportunities
 
 
+def prefilter_opportunities(opportunities: list[dict]) -> list[dict]:
+    """
+    Aggressively filter to only ladder-relevant opportunities before
+    sending to Claude. Targets odds 1.65-2.30 (our sweet spot for 2x).
+    Also deduplicates — max 3 markets per match.
+    Goal: 40-60 opportunities max, not 600+.
+    """
+    # Step 1: Odds range filter — only ladder-relevant prices
+    filtered = [o for o in opportunities if 1.65 <= o["odds"] <= 2.30]
+
+    # Step 2: Priority markets — skip low-value markets
+    priority_markets = {"h2h", "spreads", "totals", "btts", "double_chance"}
+    filtered = [o for o in filtered if any(m in o.get("market", "") for m in priority_markets)]
+
+    # Step 3: Max 3 opportunities per match (best odds per market type)
+    from collections import defaultdict
+    match_markets: dict[str, list] = defaultdict(list)
+    for o in filtered:
+        match_markets[o["match"]].append(o)
+
+    deduped = []
+    for match, opps in match_markets.items():
+        # Sort by how close to 2.0 the odds are (our target)
+        opps.sort(key=lambda x: abs(x["odds"] - 2.0))
+        deduped.extend(opps[:3])
+
+    # Step 4: Cap total at 60 — sort by proximity to 2.0 odds
+    deduped.sort(key=lambda x: abs(x["odds"] - 2.0))
+    final = deduped[:60]
+
+    print(f"  [filter] {len(opportunities)} → {len(final)} opportunities after pre-filter")
+    return final
+
+
 # ── Load real stats context ────────────────────────────────────────────────────
 
 def load_football_context() -> dict:
@@ -245,8 +279,8 @@ def analyse_with_claude(opportunities: list[dict]) -> list[dict]:
     """Send enriched opportunities to Claude Opus with extended thinking."""
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
-    # Build the user message — chunk into groups of 30 to stay within context
-    chunk_size = 30
+    # Build the user message — send in groups of 20 (tight, focused batches)
+    chunk_size = 20
     all_results = []
 
     for i in range(0, len(opportunities), chunk_size):
@@ -266,8 +300,8 @@ Remember: output ONLY the JSON array, nothing else."""
             model="claude-opus-4-6",
             max_tokens=16000,
             thinking={
-                "type": "enabled",
-                "budget_tokens": 8000,   # deep reasoning per batch
+                "type": "adaptive",
+                "budget_tokens": 6000,
             },
             system=SYSTEM_PROMPT,
             messages=[{"role": "user", "content": user_msg}],
@@ -700,7 +734,10 @@ def main():
         print("  [exit] No opportunities found.")
         return
 
-    # 2. Load real stats context
+    # 2. Pre-filter to ladder-relevant odds before anything else
+    all_opportunities = prefilter_opportunities(all_opportunities)
+
+    # 3. Load real stats context
     print("  [context] Loading stats context...")
     football_ctx = load_football_context()
     nba_ctx      = load_nba_context()
