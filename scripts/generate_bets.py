@@ -114,47 +114,135 @@ def flatten_fixtures(raw_fixtures: list[dict], sport: str) -> list[dict]:
     return opportunities
 
 
+# ── Load real stats context ────────────────────────────────────────────────────
+
+def load_football_context() -> dict:
+    """Load enriched football fixture data produced by fetch_football_data.py"""
+    try:
+        with open("docs/data/football_context.json") as f:
+            data = json.load(f)
+        # Index by match string for quick lookup
+        index = {}
+        for fix in data.get("fixtures", []):
+            key = f"{fix.get('home', '')} vs {fix.get('away', '')}".lower()
+            index[key] = fix
+        print(f"  [context] Football: {len(index)} enriched fixtures loaded")
+        return index
+    except (FileNotFoundError, json.JSONDecodeError):
+        print("  [context] No football context found — running without stats")
+        return {}
+
+
+def load_nba_context() -> dict:
+    """Load enriched NBA game data produced by fetch_nba_data.py"""
+    try:
+        with open("docs/data/nba_context.json") as f:
+            data = json.load(f)
+        index = {}
+        for game in data.get("games", []):
+            key = f"{game.get('home', '')} vs {game.get('away', '')}".lower()
+            index[key] = game
+        print(f"  [context] NBA: {len(index)} enriched games loaded")
+        return index
+    except (FileNotFoundError, json.JSONDecodeError):
+        print("  [context] No NBA context found — running without stats")
+        return {}
+
+
+def enrich_opportunity(opp: dict, football_ctx: dict, nba_ctx: dict) -> dict:
+    """Attach real stats context to an odds opportunity before sending to Claude."""
+    match_key = opp.get("match", "").lower()
+    sport     = opp.get("sport", "").upper()
+
+    # Try football context first
+    ctx = football_ctx.get(match_key)
+    if not ctx and "NBA" in sport:
+        ctx = nba_ctx.get(match_key)
+
+    # Fuzzy match — try partial home/away name match
+    if not ctx:
+        home = opp.get("home", "").lower()
+        away = opp.get("away", "").lower()
+        for key, val in {**football_ctx, **nba_ctx}.items():
+            if home[:8] in key and away[:8] in key:
+                ctx = val
+                break
+
+    if ctx:
+        opp["stats_context"] = {
+            "home_form":       ctx.get("home_form", {}),
+            "away_form":       ctx.get("away_form", {}),
+            "h2h":             ctx.get("h2h", {}),
+            "home_injuries":   ctx.get("home_injuries", []),
+            "away_injuries":   ctx.get("away_injuries", []),
+            "home_standing":   ctx.get("home_standing", {}),
+            "away_standing":   ctx.get("away_standing", {}),
+            # NBA specific
+            "home_season_stats": ctx.get("home_season_stats", {}),
+            "away_season_stats": ctx.get("away_season_stats", {}),
+            "home_splits":     ctx.get("home_splits", {}),
+            "away_splits":     ctx.get("away_splits", {}),
+            "home_b2b":        ctx.get("home_b2b", False),
+            "away_b2b":        ctx.get("away_b2b", False),
+        }
+    return opp
+
+
 # ── Claude extended-thinking analysis ─────────────────────────────────────────
 
-SYSTEM_PROMPT = """You are an elite sports betting analyst with deep expertise in value betting,
-market inefficiencies, and bankroll management. You are powering a "2x Ladder Challenge" — 
-the goal is to find ONE best bet per day that reliably achieves ~2.0x returns with the highest 
-possible hit rate over time.
+SYSTEM_PROMPT = """You are an elite sports betting analyst with access to REAL statistical data.
+You are powering a "2x Ladder Challenge" — find the highest-confidence bets targeting ~2.0x returns.
 
-Your analysis must be rigorous, honest, and data-driven. Do NOT fabricate statistics. 
-Flag genuine uncertainty. Be conservative with confidence scores.
+CRITICAL RULES:
+- You have been given REAL stats in the "stats_context" field for each opportunity. USE THEM.
+- Reference specific numbers in your reasoning — form strings, goals averages, net ratings, injury names
+- If stats_context is empty, flag this as increased uncertainty and lower your confidence accordingly
+- Do NOT fabricate statistics. If you don't have a number, say so.
+- Be ruthlessly honest. A 55% confidence is often more accurate than claiming 75%.
 
-For each opportunity you evaluate, output a JSON object with these exact fields:
+STATS YOU HAVE ACCESS TO (when available):
+Football: Last 5 form, goals scored/conceded avg, H2H record, over 2.5 rate, BTTS rate, injuries, standings
+NBA: Season net rating, offensive/defensive rating, pace, home/away splits, back-to-back flag, injuries, last 10 form
+
+ANALYSIS FRAMEWORK — work through this for every bet:
+1. What does the form data actually say? (not vibes — numbers)
+2. What does H2H tell us? (how often has this market landed historically?)
+3. Are there injury/suspension concerns that move the needle?
+4. Is the bookmaker price fair given the underlying data? (implied prob vs your model prob)
+5. What could go wrong? (risk flags must be data-driven, not generic)
+
+For each opportunity output a JSON object with EXACTLY these fields:
 
 {
   "match": "string",
   "sport": "string",
   "commence": "ISO datetime string",
   "market": "string",
-  "outcome": "string", 
+  "outcome": "string",
   "odds": float,
   "verdict": "TAKE" | "SKIP" | "MONITOR",
   "confidence": integer (0-100),
   "edge_rating": integer (1-5),
-  "expected_value": float (e.g. 0.12 means +12% EV),
+  "expected_value": float (e.g. 0.12 = +12% EV),
   "ladder_fit": "PERFECT" | "GOOD" | "MARGINAL" | "POOR",
-  "reasoning": "string (3-5 sentences explaining the key factors)",
-  "risk_flags": ["list", "of", "risk", "factors"],
-  "best_combo_partner": "string or null — suggested second leg if this is a parlay leg",
-  "kelly_fraction": float (0.0-0.25, Kelly criterion stake as fraction of bankroll)
+  "reasoning": "string — MUST reference specific stats from stats_context. Min 4 sentences.",
+  "risk_flags": ["specific", "data-backed", "risk", "factors"],
+  "best_combo_partner": "string or null",
+  "kelly_fraction": float (0.0-0.25),
+  "stats_used": true | false
 }
 
-Ladder fit scoring:
-- PERFECT: odds 1.90-2.15, confidence >65%, low variance
-- GOOD: odds 1.75-2.30, confidence >55%  
-- MARGINAL: odds outside range OR confidence 45-55%
-- POOR: high variance, poor form, injury concerns, etc.
+Ladder fit:
+- PERFECT: odds 1.90-2.15, confidence >65%, low variance, stats support
+- GOOD: odds 1.75-2.30, confidence >55%, stats available
+- MARGINAL: borderline confidence OR odds off-target OR missing stats
+- POOR: negative EV, high variance, key injuries, no stats
 
-Output ONLY a valid JSON array of objects. No preamble, no explanation outside the JSON."""
+Output ONLY a valid JSON array. No preamble. No explanation outside the JSON."""
 
 
 def analyse_with_claude(opportunities: list[dict]) -> list[dict]:
-    """Send opportunities to Claude Opus with extended thinking for deep analysis."""
+    """Send enriched opportunities to Claude Opus with extended thinking."""
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
     # Build the user message — chunk into groups of 30 to stay within context
@@ -593,7 +681,7 @@ def main():
     print(f"  LADDER BET ENGINE  —  {TODAY}")
     print(f"{'='*60}\n")
 
-    # 1. Fetch fixtures
+    # 1. Fetch odds
     all_opportunities = []
     if ODDS_API_KEY:
         for sport in SPORTS:
@@ -606,23 +694,42 @@ def main():
         print("  [warn] No ODDS_API_KEY — using demo data")
         all_opportunities = _demo_opportunities()
 
-    print(f"\n  [total] {len(all_opportunities)} opportunities to analyse\n")
+    print(f"\n  [total] {len(all_opportunities)} raw opportunities\n")
 
     if not all_opportunities:
-        print("  [exit] No opportunities found. Exiting.")
+        print("  [exit] No opportunities found.")
         return
 
-    # 2. Claude analysis
+    # 2. Load real stats context
+    print("  [context] Loading stats context...")
+    football_ctx = load_football_context()
+    nba_ctx      = load_nba_context()
+    stats_count  = len(football_ctx) + len(nba_ctx)
+    print(f"  [context] {stats_count} enriched fixtures available\n")
+
+    # 3. Enrich each opportunity with real stats
+    enriched_opps = []
+    stats_matched = 0
+    for opp in all_opportunities:
+        enriched = enrich_opportunity(opp, football_ctx, nba_ctx)
+        if enriched.get("stats_context"):
+            stats_matched += 1
+        enriched_opps.append(enriched)
+
+    print(f"  [enrich] {stats_matched}/{len(enriched_opps)} opportunities matched with real stats\n")
+
+    # 4. Claude analysis with extended thinking
     print("  [model] Starting Claude Opus extended thinking analysis...")
-    analysed = analyse_with_claude(all_opportunities)
+    analysed = analyse_with_claude(enriched_opps)
     print(f"  [model] Analysis complete — {len(analysed)} bets scored\n")
 
-    # 3. Save JSON
+    # 5. Save JSON
     os.makedirs("docs/data", exist_ok=True)
     output = {
         "generated":    TODAY,
         "total":        len(analysed),
         "take_count":   sum(1 for b in analysed if b.get("verdict") == "TAKE"),
+        "stats_powered": stats_matched,
         "bets":         sorted(analysed, key=lambda x: (
                             {"TAKE":0,"MONITOR":1,"SKIP":2}.get(x.get("verdict","SKIP"),2),
                             -x.get("confidence",0)
@@ -632,14 +739,16 @@ def main():
         json.dump(output, f, indent=2)
     print(f"  [json]  Saved: {OUTPUT_JSON}")
 
-    # 4. Build Excel
+    # 6. Build Excel
     build_excel(analysed, TODAY)
 
-    # 5. Update history
+    # 7. Update history
     update_history(analysed, TODAY)
 
     print(f"\n{'='*60}")
-    print(f"  Done. TAKE signals: {output['take_count']} / {output['total']}")
+    print(f"  Done.")
+    print(f"  TAKE signals:   {output['take_count']} / {output['total']}")
+    print(f"  Stats-powered:  {stats_matched} / {len(enriched_opps)}")
     print(f"{'='*60}\n")
 
 
