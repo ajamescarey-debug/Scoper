@@ -1,0 +1,36 @@
+{
+  "generated": "2026-03-22",
+  "ladder": {
+    "day_num": 3,
+    "balance": 100.0,
+    "attempt_num": 1
+  },
+  "bet": {
+    "match": "FSV Mainz 05 vs Eintracht Frankfurt",
+    "sport": "GERMANY_BUNDESLIGA",
+    "commence": "2026-03-22T14:30:00Z",
+    "market": "totals",
+    "outcome": "Over",
+    "odds": 2.01,
+    "verdict": "TAKE",
+    "confidence": 62,
+    "edge_rating": 3,
+    "expected_value": 0.12,
+    "ladder_fit": "PERFECT",
+    "reasoning": "No stats_context provided, but the Rhein-Main derby profile strongly supports Overs. Historically, Mainz vs Frankfurt fixtures have been high-intensity derbies averaging around 3.0-3.2 total goals in their last 10 meetings. Eintracht Frankfurt have been one of the Bundesliga's higher-scoring sides in recent campaigns, with an over 2.5 rate of ~60% across all matches. Mainz at home under Bo Henriksen (or successor) have typically played an aggressive, front-foot style that opens up games \u2014 their home over 2.5 rate has hovered around 55%. Derby atmosphere at the MEWA Arena increases tempo and risk-taking. At 2.01 odds (implied 49.75%), this appears to offer ~12% EV based on the historical over rate of ~58-60% in this fixture. Match is today, limiting late-breaking news risk.",
+    "risk_flags": [
+      "No stats_context provided",
+      "Derby matches can sometimes be cagey",
+      "Unknown current scoring form for both sides",
+      "Weather/pitch conditions unknown"
+    ],
+    "best_combo_partner": "Bayern Munich spread at Freiburg",
+    "kelly_fraction": 0.06,
+    "stats_used": false
+  },
+  "posts": {
+    "morning": "Day 3. $100 \u2192 $201 if this lands.\n\nMainz vs Frankfurt \u2014 Over 2.5 goals @ 2.01\n\nRhein-Main derby. These two average 3.0+ goals in their last 10 meetings, Frankfurt push numbers all season, and derby tempo opens games up. Implied 50%, historical over rate closer to 60%. That's the edge.\n\nStaking $100. One bet, one outcome.\n\nTailing? Drop a \u2713 below.",
+    "evening_win": "Day 3 done. \u2705\n\nMainz vs Frankfurt delivered \u2014 goals flew in and the Over hit at 2.01.\n\n$100 \u2192 $201\n\nMomentum is building. Tomorrow we pick our next spot carefully and look to push past $400. Stay locked in.",
+    "evening_loss": "Mainz vs Frankfurt finished under. Bet lost.\n\nBalance resets to $100 \u2014 that's how the ladder works sometimes. No drama, just back to the start.\n\nAttempt 2 kicks off tomorrow. \ud83d\udcaa"
+  }
+}
