@@ -147,7 +147,7 @@
   <div class="loading"><span class="loading-dot">⚡</span> Loading today's intelligence...</div>
 </div>
 
-<div class="dl-bar">
+
   <a class="dl-btn" id="excel-dl" href="#" download>📥 Download Excel Feed</a>
   <div class="dl-info" id="dl-info">Full analysis · All markets · Parlay builder · Model log</div>
 </div>
@@ -281,6 +281,58 @@ function updateExcelLink(date) {
 }
 
 loadData();
+
+async function loadPosts() {
+  try {
+    const res  = await fetch('data/posts.json?_=' + Date.now());
+    const data = await res.json();
+    const posts = data.posts || {};
+    if (!posts.morning) return;
+    const panel = document.getElementById('posts-panel');
+    panel.style.display = 'block';
+    const cards = [
+      { label: '🌅 Morning — drop before kickoff', key: 'morning',      post: posts.morning },
+      { label: '✅ Evening — if it wins',           key: 'evening_win',  post: posts.evening_win },
+      { label: '❌ Evening — if it loses',          key: 'evening_loss', post: posts.evening_loss },
+    ].filter(c => c.post);
+    document.getElementById('posts-grid').innerHTML = cards.map(c => `
+      <div class="post-card">
+        <div class="post-card-label">
+          <span>${c.label}</span>
+          <button class="copy-btn" onclick="copyPost('${c.key}', this)">Copy</button>
+        </div>
+        <div class="post-text">${c.post}</div>
+      </div>`).join('');
+    window._posts = posts;
+  } catch(e) {}
+}
+
+function copyPost(key, btn) {
+  const text = window._posts?.[key];
+  if (!text) return;
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+loadPosts();
 </script>
+
+<div id="posts-panel" style="display:none;padding:0 24px 32px">
+  <div style="font-size:13px;font-weight:600;color:var(--gold);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:14px">📱 Today's Threads Posts</div>
+  <div id="posts-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px"></div>
+</div>
+
+<style>
+  .post-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px}
+  .post-card-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+  .post-text{font-size:13px;line-height:1.7;color:var(--text);white-space:pre-wrap;min-height:80px}
+  .copy-btn{padding:5px 14px;border-radius:8px;background:transparent;border:1px solid var(--border);color:var(--muted);font-size:11px;cursor:pointer;transition:all .15s}
+  .copy-btn:hover{border-color:var(--gold);color:var(--gold)}
+  .copy-btn.copied{border-color:var(--take);color:var(--take)}
+</style>
+
 </body>
 </html>
