@@ -1,0 +1,114 @@
+[
+  {
+    "date": "2026-03-22",
+    "total": 619,
+    "take_count": 27,
+    "monitor_count": 118,
+    "top_bets": [
+      {
+        "match": "Aston Villa vs West Ham United",
+        "sport": "EPL",
+        "commence": "2026-03-22T14:15:00Z",
+        "market": "totals",
+        "outcome": "Over",
+        "odds": 1.98,
+        "verdict": "TAKE",
+        "confidence": 60,
+        "edge_rating": 3,
+        "expected_value": 0.08,
+        "ladder_fit": "PERFECT",
+        "reasoning": "Over 2.5 goals at 1.98 is the standout ladder pick today. Villa at home under Emery play aggressive, front-foot football with high xG output. West Ham have historically been leaky on the road, conceding regularly while also needing to attack to stay in games. Villa Park creates an intense, attacking atmosphere and their matches frequently breach the 2.5 threshold. The odds at 1.98 sit perfectly in the ladder sweet spot with an implied ~50.5% when the true probability likely sits around 55-58%.",
+        "risk_flags": [
+          "west_ham_could_park_bus",
+          "uncertain_exact_2025_26_stats",
+          "villa_possible_rotation_for_europe"
+        ],
+        "best_combo_partner": "Aston Villa h2h at 1.78 for a secondary parlay if desired",
+        "kelly_fraction": 0.06
+      },
+      {
+        "match": "Arsenal vs Bournemouth",
+        "sport": "EPL",
+        "commence": "2026-04-11T11:30:00Z",
+        "market": "totals",
+        "outcome": "Over",
+        "odds": 2.04,
+        "verdict": "TAKE",
+        "confidence": 62,
+        "edge_rating": 4,
+        "expected_value": 0.1,
+        "ladder_fit": "PERFECT",
+        "reasoning": "Over 2.5 goals at 2.04 is the standout ladder pick. Arsenal at home are prolific scorers and typically create many chances. Bournemouth play an open attacking style that leaves them vulnerable defensively, often contributing to high-scoring games. Arsenal home matches frequently clear 2.5 goals \u2014 I estimate the true over probability at around 54-56%, giving approximately +10% EV. Perfect odds for the 2x ladder.",
+        "risk_flags": [
+          "bournemouth_could_park_bus",
+          "match_20_days_away",
+          "arsenal_rotation_possible"
+        ],
+        "best_combo_partner": "Arsenal -1.5 spread at 2.16",
+        "kelly_fraction": 0.07
+      },
+      {
+        "match": "Brentford vs Everton",
+        "sport": "EPL",
+        "commence": "2026-04-11T14:00:00Z",
+        "market": "totals",
+        "outcome": "Over",
+        "odds": 2.03,
+        "verdict": "TAKE",
+        "confidence": 62,
+        "edge_rating": 4,
+        "expected_value": 0.08,
+        "ladder_fit": "PERFECT",
+        "reasoning": "Brentford at the Gtech Community Stadium are one of the EPL's most entertaining home sides, consistently producing high-scoring matches. Everton's defensive record away from home has been consistently poor across recent seasons, conceding frequently on the road. The Over 2.5 line at 2.03 sits perfectly in the ladder sweet spot, and historical data suggests Brentford home games go over ~55-58% of the time against weaker opposition. This is the standout ladder pick from the entire slate.",
+        "risk_flags": [
+          "20 days until match - lineup/injury uncertainty",
+          "Everton could adopt ultra-defensive setup"
+        ],
+        "best_combo_partner": "Burnley vs Brighton Under 2.5 @ 2.15",
+        "kelly_fraction": 0.06
+      },
+      {
+        "match": "Crystal Palace vs Newcastle United",
+        "sport": "EPL",
+        "commence": "2026-04-12T13:00:00Z",
+        "market": "totals",
+        "outcome": "Under",
+        "odds": 2.14,
+        "verdict": "TAKE",
+        "confidence": 58,
+        "edge_rating": 4,
+        "expected_value": 0.07,
+        "ladder_fit": "PERFECT",
+        "reasoning": "This is the standout play for the ladder. Crystal Palace at Selhurst Park historically produce tight, physical, lower-scoring affairs \u2014 especially against quality opposition where they sit deeper and counter. Newcastle away have been involved in lower-scoring games at difficult venues. Under 2.5 at 2.14 implies ~47% probability, but based on Palace's home profile and this matchup dynamic, the true probability is closer to 52-55%. The 2.14 price sits perfectly in the ladder zone with identifiable edge.",
+        "risk_flags": [
+          "3_weeks_out_lineup_uncertainty",
+          "newcastle_can_be_clinical",
+          "palace_form_dependent"
+        ],
+        "best_combo_partner": "Liverpool vs Fulham Fulham spread +1.5",
+        "kelly_fraction": 0.05
+      },
+      {
+        "match": "Chelsea vs Manchester City",
+        "sport": "EPL",
+        "commence": "2026-04-12T15:30:00Z",
+        "market": "spreads",
+        "outcome": "Chelsea",
+        "odds": 2.1,
+        "verdict": "TAKE",
+        "confidence": 62,
+        "edge_rating": 4,
+        "expected_value": 0.1,
+        "ladder_fit": "PERFECT",
+        "reasoning": "Chelsea on a spread (likely +0.5, i.e., Chelsea to win or draw / Double Chance equivalent) at 2.10 is the standout play. Implied probability is ~47.6%, but historically in matches between top sides at home, the home team avoids defeat around 53-57% of the time. Chelsea's home form tends to be solid against even the strongest opponents. At 2.10 this offers genuine value with perfect ladder odds and moderate-to-good confidence.",
+        "risk_flags": [
+          "3_weeks_out_lineup_unknown",
+          "city_strength_in_form",
+          "april_congestion"
+        ],
+        "best_combo_partner": "Brentford vs Fulham - Brentford h2h @ 2.14",
+        "kelly_fraction": 0.07
+      }
+    ]
+  }
+]
