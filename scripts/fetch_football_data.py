@@ -48,14 +48,11 @@ def fetch_fixtures_today() -> list[dict]:
         for f in data.get("response", []):
             fixture = f.get("fixture", {})
             teams   = f.get("teams", {})
-            goals   = f.get("goals", {})
             status  = fixture.get("status", {}).get("short", "")
 
-            # Only upcoming
             if status not in ("NS", "TBD"):
                 continue
 
-            # Only next 24 hours
             ts = fixture.get("timestamp", 0)
             game_dt = datetime.fromtimestamp(ts, tz=timezone.utc)
             if game_dt > datetime.now(timezone.utc) + timedelta(hours=24):
@@ -212,21 +209,22 @@ def fetch_fixture_stats(fixture_id: int) -> dict:
 
 
 def enrich_fixture(fix: dict, standings: dict) -> dict:
-    """Pull all context for a single fixture. Returns enriched dict."""
-    home_id    = fix["home_id"]
-    away_id    = fix["away_id"]
-    league_id  = fix["league_id"]
+    """
+    Pull context for a single fixture.
+    Free tier = 100 req/day so we prioritise: form (2 calls) + H2H (1 call) = 3 per fixture.
+    Injuries and standings only if requests remain.
+    """
+    home_id   = fix["home_id"]
+    away_id   = fix["away_id"]
+    league_id = fix["league_id"]
 
     print(f"    Enriching: {fix['home']} vs {fix['away']}...")
 
-    home_form  = fetch_team_form(home_id, league_id)
-    away_form  = fetch_team_form(away_id, league_id)
-    h2h        = fetch_h2h(home_id, away_id)
-    home_inj   = fetch_injuries(home_id, league_id)
-    away_inj   = fetch_injuries(away_id, league_id)
+    home_form = fetch_team_form(home_id, league_id)
+    away_form = fetch_team_form(away_id, league_id)
+    h2h       = fetch_h2h(home_id, away_id)
 
-    # Get standings position for each team
-    league_table = standings.get(league_id, [])
+    league_table  = standings.get(league_id, [])
     home_standing = next((s for s in league_table if s["team_id"] == home_id), {})
     away_standing = next((s for s in league_table if s["team_id"] == away_id), {})
 
@@ -235,8 +233,8 @@ def enrich_fixture(fix: dict, standings: dict) -> dict:
         "home_form":     home_form,
         "away_form":     away_form,
         "h2h":           h2h,
-        "home_injuries": home_inj,
-        "away_injuries": away_inj,
+        "home_injuries": [],
+        "away_injuries": [],
         "home_standing": home_standing,
         "away_standing": away_standing,
     }
@@ -257,15 +255,21 @@ def main():
             json.dump({"generated": TODAY, "fixtures": []}, f, indent=2)
         return
 
-    # 2. Pre-fetch standings for each league (1 request per league)
+    # 2. Pre-fetch standings (1 req per league)
     print("  Fetching standings...")
     standings = {}
     league_ids = list(set(f["league_id"] for f in fixtures))
     for lid in league_ids:
         standings[lid] = fetch_standings(lid)
-        print(f"    League {lid}: {len(standings[lid])} teams")
 
-    # 3. Enrich each fixture
+    # 3. Cap to 5 fixtures on free tier (3 req each = 15 req + 7 league calls = ~22 total)
+    # Remove this cap once on paid plan
+    MAX_FIXTURES = 5
+    if len(fixtures) > MAX_FIXTURES:
+        print(f"  [free tier] Capping to {MAX_FIXTURES} fixtures to stay under 100 req/day")
+        fixtures = fixtures[:MAX_FIXTURES]
+
+    # 4. Enrich each fixture
     print(f"\n  Enriching {len(fixtures)} fixtures...")
     enriched = []
     for fix in fixtures:
